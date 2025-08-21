@@ -14,27 +14,54 @@
        <h1>Developer Login</h1>
 
        <?php
-           $username = $_POST['username'] ?? '';
-           $password = $_POST['password'] ?? '';
-           $token    = $_POST['token'] ?? '';
 
+              // Initialize variables
+           $username = trim(htmlspecialchars($_POST['username'] ?? ''));
+           $password = trim($_POST['password'] ?? '');
+           $token = trim($_POST['token'] ?? '');
+
+              // Define correct credentials
            $correctUsername = "admin";
-           $correctPassword = "password123";
+           $correctPasswordHash = password_hash("password123", PASSWORD_DEFAULT);
            $correctToken    = "PROGRAMMING";
 
            $message = '';
            $status = '';
 
            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-               if (($username === $correctUsername && $password === $correctPassword) ||
-                   ($username === $correctUsername && $token === $correctToken)) {
-                   $message = "✅ Access granted. Welcome, $username!";
-                   $status = "success";
-               } else {
-                   $message = "⛔ Access denied. Please check your credentials or token.";
-                   $status = "error";
-               }
+              // --- LOGIN VIA TOKEN ---
+             if (!empty($token) && empty($username) && empty($password)) {
+                 if (hash_equals($correctToken, $token)) {
+                     $message = "✅ Access granted via token. Welcome to the system!";
+                     $status  = "success";
+                     session_start();
+                     session_regenerate_id(true);
+                     $_SESSION['auth'] = 'token';
+            } else {
+                $message = "⛔ Invalid token.";
+                $status  = "error";
            }
+
+             // --- LOGIN VIA USERNAME + PASSWORD ---
+           } elseif (!empty($username) && !empty($password) && empty($token)) {
+             if ($username === $correctUsername && password_verify($password, $correctPasswordHash)) {
+                 $message = "✅ Access granted. Welcome, {$username}!";
+                 $status  = "success";
+                 session_start();
+                 session_regenerate_id(true);
+                 $_SESSION['auth'] = 'user';
+           } else {
+               $message = "⛔ Invalid username or password.";
+               $status  = "error";
+           }
+
+            // --- INVALID INPUT ---
+           } else {
+               $message = "⚠️ Please enter your credentials or your token.";
+               $status  = "warning";
+           }
+    }
+            // --- END OF LOGIN LOGIC ---
        ?>
 
        <?php if($message): ?>
@@ -42,7 +69,7 @@
        <?php endif; ?>
 
        <div class="form-group <?php echo $status; ?>">
-           <input type="text" id="username" name="username" placeholder="Username" required value="<?php echo htmlspecialchars($username); ?>">
+           <input type="text" id="username" name="username" placeholder="Username" value="<?php echo htmlspecialchars($username); ?>">
            <i class='bx bxs-user'></i>
        </div>
 
